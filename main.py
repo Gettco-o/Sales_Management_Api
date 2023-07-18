@@ -3,7 +3,7 @@ from flask import Blueprint, abort, jsonify, request
 from models import db, Roles, Staffs, Products, Sales_record, Product_sales
 from werkzeug.security import generate_password_hash, check_password_hash
 import sys
-from auth import generate_token, AuthError, requires_auth
+from auth import generate_token, load_token, requires_auth
 
 main = Blueprint('main', __name__)
 
@@ -30,16 +30,21 @@ def get_roles():
 @main.route("/staffs")
 @requires_auth('get:staff')
 def get_staffs(tk):
-    query = Staffs.query.all()
-    staffs = [staff.format() for staff in query]
 
-    if len(staffs)==0:
-        abort(404)
-    
-    return jsonify({
-        'success': True,
-        'staffs': staffs
-    })
+    try:
+        query = Staffs.query.all()
+        staffs = [staff.format() for staff in query]
+
+        if len(staffs)==0:
+            abort(404)
+        
+        return jsonify({
+            'success': True,
+            'staffs': staffs
+        })
+    except:
+        print(sys.exc_info())
+        abort(422)
 
 @main.route("/staffs/new", methods=['POST'])
 @requires_auth('post:staff')
@@ -58,10 +63,9 @@ def new_staff(tk):
             })
     permission = Roles.query.filter(Roles.type==role).first()
     permission = permission.permissions
-    print(permission, "\n")
+
 
     token = generate_token(name=name, role=role, permission=permission)
-    print(token, "\n")
 
     try:
         user = Staffs.query.filter_by(name=name).first()
@@ -84,7 +88,6 @@ def new_staff(tk):
         })
 
     except:
-        staff.reverse()
         print(sys.exc_info())
         abort(422)
 
@@ -104,24 +107,69 @@ def staff_login():
 
     try:
         staff = Staffs.query.filter_by(name=name).first()
+        
+        if not staff or not check_password_hash(staff.password, password):
+            return jsonify({
+                "success": False,
+                "message": "Incorrect details"
+            })
+        
+
+        user = load_token(staff.token)
+
+        if datetime.strptime(user['expr_time'], "%Y-%m-%d %H:%M:%S") < datetime.now():
+            refresh_token(staff.id)
+        
+        
+        return jsonify({
+            "success": True,
+            "id": staff.id,
+            "name": staff.name,
+            "gender": staff.gender,
+            "role": staff.role,
+            "token": staff.token
+        })
+
     except:
+        print(sys.exc_info())
         abort(422)
 
-    if not staff or not check_password_hash(staff.password, password):
+# token refresh
+def refresh_token(id):
+
+    try:
+        staff = Staffs.query.filter(Staffs.id==id).one_or_none()
+
+        if staff is None:
+            abort(404)
+
+        permission = Roles.query.filter(Roles.type==staff.role).first()
+        permission = permission.permissions
+
+        token = generate_token(name=staff.name, role=staff.role, permission=permission)
+
+        staff.token = token
+        staff.update()
+
         return jsonify({
-            "success": False,
-            "message": "Incorrect details"
+            "success": True,
+            "id": staff.id,
+            "name": staff.name,
+            "gender": staff.gender,
+            "role": staff.role,
+            "token": staff.token
         })
-    
-    
-    return jsonify({
-        "success": True,
-        "id": staff.id,
-        "name": staff.name,
-        "gender": staff.gender,
-        "role": staff.role,
-        "token": staff.token
-    })
+    except:
+        print(sys.exc_info())
+        staff.reverse()
+        abort(400)
+
+@main.route("/staffs/<id>/refersh_token", methods=['PATCH'])
+def refresh_staff_token(id):
+    refresh_token(id)
+
+           
+
 
 @main.route("/products")
 @requires_auth('get:product')

@@ -5,6 +5,8 @@ import os
 import base64
 from cryptography.fernet import Fernet
 from dotenv import load_dotenv
+from datetime import datetime, timedelta
+import sys
 
 load_dotenv()
 
@@ -20,7 +22,8 @@ f = Fernet(url_safe_key)
 
 def generate_token(**user):
     #name, role, permissions
-
+    timer = datetime.now() + timedelta(hours=12)
+    user["expr_time"] = timer.strftime("%Y-%m-%d %H:%M:%S")
     user_byte = json.dumps(user).encode('utf-8')
     # user = json.loads(user_byte).decode('utf-8)    
     token = f.encrypt(user_byte)
@@ -41,6 +44,14 @@ def load_token(token):
         )
     
     if 'role' not in user:
+        raise AuthError(
+            {
+                'code': 'invalid_header',
+                'description': 'Authorization malformed.'
+            }, 401
+        )
+    
+    if 'expr_time' not in user:
         raise AuthError(
             {
                 'code': 'invalid_header',
@@ -124,8 +135,18 @@ def check_permissions(permission, user):
 def decode_token(token):
     try:
         user = load_token(token)
+        
+        if  datetime.strptime(user['expr_time'], "%Y-%m-%d %H:%M:%S") < datetime.now():
+            raise AuthError(
+                {
+                    'code': 'token_expired',
+                    'description': 'Token Expired'
+                }, 401
+            )
+
         return user
     except:
+        print(sys.exc_info())
         raise AuthError(
         {
             'code': 'invalid_header',
@@ -142,6 +163,7 @@ def requires_auth(permission=''):
             try:
                 user = decode_token(token)
             except:
+                print(sys.exc_info())
                 abort(401)
 
             check_permissions(permission, user)
