@@ -8,4 +8,4 @@ The api stores and returns data such as staffs, products, sales record, and so o
 
 A token is generated for each user which will be used for the authorization when making requests to the API endpoints. The token expires after 12 hours and is being refreshed when the user logs in.
 
-There is also an endpoint to refresh the token.
+There is also an endpoint to refresh the token (Which can be used to create a refresh button on the client side).
