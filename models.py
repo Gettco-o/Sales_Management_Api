@@ -63,6 +63,9 @@ class Staffs(db.Model):
     def reverse(self):
         db.session.rollback()
 
+    def update(self):
+        db.session.commit()
+
     def format(self):
         return {
             'id': self.id,

@@ -148,7 +148,7 @@ def refresh_token(id):
 
         token = generate_token(name=staff.name, role=staff.role, permission=permission)
 
-        staff.token = token
+        staff.token = token.decode('utf-8')
         staff.update()
 
         return jsonify({
@@ -164,12 +164,23 @@ def refresh_token(id):
         staff.reverse()
         abort(400)
 
-@main.route("/staffs/<id>/refersh_token", methods=['PATCH'])
+@main.route("/staffs/<id>/refresh_token", methods=['PATCH'])
 def refresh_staff_token(id):
-    refresh_token(id)
+    try:
+        refresh_token(id)
+        staff = Staffs.query.filter(Staffs.id==id).one_or_none()
 
-           
-
+        return jsonify({
+            "success": True,
+            "id": staff.id,
+            "name": staff.name,
+            "gender": staff.gender,
+            "role": staff.role,
+            "token": staff.token
+        })
+    except:
+        print(sys.exc_info())
+        abort(422)
 
 @main.route("/products")
 @requires_auth('get:product')
