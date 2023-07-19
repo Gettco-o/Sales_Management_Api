@@ -128,6 +128,14 @@ def check_permissions(permission, user):
                 'description': 'Permission not found'
             }, 403
         )
+    
+    if  datetime.strptime(user['expr_time'], "%Y-%m-%d %H:%M:%S") < datetime.now():
+            raise AuthError(
+                {
+                    'code': 'token_expired',
+                    'description': 'Token Expired'
+                }, 401
+            )
 
     return True
 
@@ -136,14 +144,6 @@ def decode_token(token):
     try:
         user = load_token(token)
         
-        if  datetime.strptime(user['expr_time'], "%Y-%m-%d %H:%M:%S") < datetime.now():
-            raise AuthError(
-                {
-                    'code': 'token_expired',
-                    'description': 'Token Expired'
-                }, 401
-            )
-
         return user
     except:
         print(sys.exc_info())
