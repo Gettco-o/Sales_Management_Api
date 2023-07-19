@@ -167,17 +167,8 @@ def refresh_token(id):
 @main.route("/staffs/<id>/refresh_token", methods=['PATCH'])
 def refresh_staff_token(id):
     try:
-        refresh_token(id)
-        staff = Staffs.query.filter(Staffs.id==id).one_or_none()
-
-        return jsonify({
-            "success": True,
-            "id": staff.id,
-            "name": staff.name,
-            "gender": staff.gender,
-            "role": staff.role,
-            "token": staff.token
-        })
+        staff = refresh_token(id)
+        return staff
     except:
         print(sys.exc_info())
         abort(422)
